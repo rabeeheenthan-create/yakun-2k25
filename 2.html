@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YAKUN IGASA FEST | Results</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        /* Mobile-First, Single-View Styling */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); /* Deep Navy/Slate background */
+            color: #e2e8f0; 
+            min-height: 10vh;
+        }
+        .text-accent { color: #a855f7; } /* Violet-500 */
+        .bg-card { background-color: rgba(30, 41, 59, 0.7); backdrop-filter: blur(5px); }
+        .score-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .score-card:active { transform: translateY(-1px); box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3); } /* Enhanced touch response */
+        .nav-active { background-color: #a855f7 !important; color: white !important; }
+
+        /* Wing Colors */
+        
+        /* Ignara: Yellow/Orange */
+        .ignara-color { color: #fbbf24; }
+        .ignara-bg { background-color: #f59e0b; }
+        /* Nexara: Green */
+        .nexara-color { color: #34d399; }
+        .nexara-bg { background-color: #10b981; }
+        /* Lunara: Red */
+        .lunara-color { color: #f87171; }
+        .lunara-bg { background-color: #ef4444; }
+        /* Zonara: Blue */
+        .zonara-color { color: #60a5fa; }
+        .zonara-bg { background-color: #3b82f6; }
+
+
+        /* Disabled state for buttons and inputs */
+        .admin-locked { cursor: not-allowed !important; opacity: 0.5; }
+        .admin-locked:hover { background-color: #475569 !important; }
+        
+        /* Force Phone Ratio Default View */
+        #app-layout-wrapper {
+            /* Max width set to phone size for the single-view requirement */
+            max-width: 400px; 
+            margin-left: auto;
+            margin-right: auto;
+            min-height: 100vh;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Responsive adjustments for the Score Cards */
+        .score-card-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)); /* Force 2 columns on small screens */
+            gap: 1rem;
+        }
+
+        /* Mobile fixes for nested content */
+        #results-list {
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Modal for Admin Login -->
+    <div id="admin-login-modal" class="fixed inset-0 bg-black bg-opacity-80 hidden z-[110] items-center justify-center transition-opacity">
+        <div class="bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-sm mx-4 border border-red-700">
+            <h3 class="text-2xl font-bold text-red-500 mb-4 border-b border-gray-700 pb-2">Admin Login Required</h3>
+            <p class="text-sm text-gray-400 mb-4">Enter the administrative passcode to enable result entry and management.</p>
+            <form id="admin-form" class="space-y-4">
+                <input type="password" id="admin-passcode" placeholder="Enter Passcode" required class="mt-1 block w-full rounded-md border-gray-600 bg-gray-900 text-white shadow-sm p-3 focus:ring-red-500 focus:border-red-500">
+                <div id="admin-status" class="hidden p-2 rounded-md text-sm text-center bg-red-800 text-white"></div>
+                <button type="submit" class="w-full py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold transition">Unlock Admin Mode</button>
+            </form>
+            <button onclick="document.getElementById('admin-login-modal').classList.add('hidden');" class="mt-4 w-full py-2 text-gray-400 hover:text-white transition">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Modal for Winner Details -->
+    <div id="winners-modal" class="fixed inset-0 bg-black bg-opacity-80 hidden z-[100] items-center justify-center transition-opacity">
+        <div class="bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-sm mx-4 border border-violet-700">
+            <h3 id="modal-title" class="text-xl font-bold text-accent mb-4 border-b border-gray-700 pb-2">Wing Winners</h3>
+            <div id="modal-content" class="space-y-3 text-gray-200 h-96 overflow-y-auto">
+                <!-- Content injected here -->
+            </div>
+            <button onclick="document.getElementById('winners-modal').classList.add('hidden');" class="mt-6 w-full py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 font-semibold transition">Close</button>
+        </div>
+    </div>
+
+    <!-- Custom Confirmation Modal for Deletion -->
+    <div id="delete-confirm-modal" class="fixed inset-0 bg-black bg-opacity-80 hidden z-[120] items-center justify-center transition-opacity">
+        <div class="bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-sm mx-4 border border-red-700">
+            <h3 class="text-2xl font-bold text-red-500 mb-4 border-b border-gray-700 pb-2">Confirm Deletion</h3>
+            <p id="confirm-message" class="text-sm text-gray-300 mb-6">Are you sure you want to delete this result?</p>
+            <div class="flex justify-end space-x-3">
+                <button onclick="hideCustomConfirm(false)" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition">Cancel</button>
+                <button id="confirm-delete-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold transition">Delete</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Outer wrapper forced to phone size -->
+    <div id="app-layout-wrapper" class="mx-auto bg-gray-900">
+        
+        <!-- Main Content Wrapper -->
+        <div class="p-4 flex flex-col min-h-screen">
+
+            <!-- Navigation Bar (Top, fixed) -->
+            <div class="flex items-center justify-between mb-4 bg-gray-900 p-3 rounded-xl sticky top-0 z-40 border-b border-violet-800 shadow-xl">
+                <h1 class="text-xl font-extrabold text-accent">YAKUN IGASA FEST</h1>
+                <!-- Navigation Buttons -->
+                <div class="flex space-x-2">
+                    <button onclick="navigate('scoreboard')" id="nav-scoreboard" class="nav-btn px-3 py-1 rounded-full font-semibold transition text-sm nav-active bg-violet-600 text-white">Scores</button>
+                    <!-- nav-results is always visible for viewing results/entry -->
+                    <button onclick="navigate('results')" id="nav-results" class="nav-btn px-3 py-1 rounded-full font-semibold text-gray-300 bg-gray-700 hover:bg-violet-500 transition text-sm">Entry</button>
+                </div>
+            </div>
+
+            <!-- Admin Status Card -->
+             <div id="admin-controls" class="mb-4">
+                <!-- Admin Lock/Unlock status is rendered here by JS -->
+            </div>
+
+
+            <!-- Pages Container (Main Scrollable Area) -->
+            <div id="page-container" class="flex-grow">
+                
+                <!-- Page 1: Scoreboard (Home) -->
+                <section id="scoreboard-page" class="space-y-6 pb-4">
+                    <header class="text-center">
+                        <h2 class="text-4xl font-extrabold tracking-tight leading-none text-white">YAKUN IGASA FEST</h2>
+                        <p class="text-md font-light uppercase tracking-widest text-gray-400 mt-1">Igasa Fest Results</p>
+                    </header>
+                    
+                    <!-- Wing Score Cards (Mobile Optimized) -->
+                    <div id="wing-scores-display" class="grid score-card-grid">
+                        <!-- Cards populated by JS, including the Summary Card -->
+                    </div>
+                </section>
+
+                <!-- Page 2: Results Entry / Detailed Results (Viewing is public, editing is locked) -->
+                <section id="results-page" class="hidden pb-4">
+                    <h2 class="text-2xl font-bold text-accent mb-6">Results Management</h2>
+
+                    <div class="space-y-6">
+                        <!-- Result Entry Form (Locked unless Admin Mode is active) -->
+                        <div class="bg-card p-4 rounded-xl shadow-lg border border-violet-700">
+                            <h3 class="text-xl font-bold text-white mb-4 border-b border-gray-700 pb-2">Add New Program Result</h3>
+
+                            <form id="result-form" class="space-y-4">
+                                <div><label for="entry-name" class="block text-sm font-medium text-gray-300">Student Name</label>
+                                    <input type="text" id="entry-name" required class="mt-1 block w-full rounded-md border-gray-600 bg-gray-800 text-white shadow-sm p-2 focus:ring-violet-500 focus:border-violet-500">
+                                </div>
+                                
+                                <div><label for="entry-program" class="block text-sm font-medium text-gray-300">Program Name</label>
+                                    <input type="text" id="entry-program" required class="mt-1 block w-full rounded-md border-gray-600 bg-gray-800 text-white shadow-sm p-2 focus:ring-violet-500 focus:border-violet-500">
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div><label for="entry-category" class="block text-sm font-medium text-gray-300">Category</label>
+                                        <select id="entry-category" required class="mt-1 block w-full rounded-md border-gray-600 bg-gray-800 text-white shadow-sm p-2 text-sm focus:ring-violet-500 focus:border-violet-500">
+                                            <option value="" disabled selected>Category</option>
+                                            <option value="Sub-Junior">Sub-Junior</option>
+                                            <option value="Junior">Junior</option>
+                                            <option value="Senior">Senior</option>
+                                            <option value="General">General</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div><label for="entry-wing" class="block text-sm font-medium text-gray-300">Wing</label>
+                                        <select id="entry-wing" required class="mt-1 block w-full rounded-md border-gray-600 bg-gray-800 text-white shadow-sm p-2 text-sm focus:ring-violet-500 focus:border-violet-500">
+                                            <option value="Ignara">Ignara</option>
+                                            <option value="Nexara">Nexara</option>
+                                            <option value="Lunara">Lunara</option>
+                                            <option value="Zonara">Zonara</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label for="entry-position" class="block text-sm font-medium text-gray-300">Position</label>
+                                    <select id="entry-position" required class="mt-1 block w-full rounded-md border-gray-600 bg-gray-800 text-white shadow-sm p-2 focus:ring-violet-500 focus:border-violet-500">
+                                        <option value="" disabled selected>Select Position</option>
+                                        <option value="1st">1st Place</option>
+                                        <option value="2nd">2nd Place</option>
+                                        <option value="3rd">3rd Place</option>
+                                    </select>
+                                    <p id="points-preview" class="mt-2 text-xs text-gray-400"></p>
+                                </div>
+
+                                <!-- Submit Button and Status -->
+                                <button type="submit" id="submit-result-btn" class="w-full py-2 px-4 rounded-md shadow-lg text-lg font-medium text-white bg-green-600 hover:bg-green-700 transition">
+                                    Add Result & Update Score
+                                </button>
+                                <div id="form-status" class="p-3 rounded-md text-sm hidden text-center"></div>
+                                <p id="admin-lock-status-form" class="text-center text-sm font-medium text-red-400"></p>
+                            </form>
+                        </div>
+
+                        <!-- Detailed Results View (Publicly viewable) -->
+                        <div class="bg-card p-4 rounded-xl shadow-lg border border-gray-700">
+                            <h3 class="text-xl font-bold text-white mb-4 border-b border-gray-700 pb-2">Detailed Results</h3>
+                            
+                            <!-- Filtering Controls -->
+                            <div class="space-y-3 mb-4">
+                                <input type="text" id="search-text" placeholder="Search program or student name..." class="w-full rounded-md border-gray-600 bg-gray-800 text-white p-2 text-sm focus:ring-violet-500 focus:border-violet-500" />
+                                
+                                <div class="grid grid-cols-3 gap-3">
+                                    <select id="filter-wing" class="rounded-md border-gray-600 bg-gray-800 text-white p-2 text-sm">
+                                        <option value="All">Wing</option>
+                                        <option value="Ignara">Ignara</option>
+                                        <option value="Nexara">Nexara</option>
+                                        <option value="Lunara">Lunara</option>
+                                        <option value="Zonara">Zonara</option>
+                                    </select>
+                                    <select id="filter-category" class="rounded-md border-gray-600 bg-gray-800 text-white p-2 text-sm">
+                                        <option value="All">Category</option>
+                                        <option value="Sub-Junior">Sub-Junior</option>
+                                        <option value="Junior">Junior</option>
+                                        <option value="Senior">Senior</option>
+                                        <option value="General">General</option>
+                                    </select>
+                                    <select id="filter-position" class="rounded-md border-gray-600 bg-gray-800 text-white p-2 text-sm">
+                                        <option value="All">Position</option>
+                                        <option value="1st">1st Place</option>
+                                        <option value="2nd">2nd Place</option>
+                                        <option value="3rd">3rd Place</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- Results List -->
+                            <div id="results-list" class="space-y-2">
+                                <p class="text-center text-gray-500 py-10" id="results-loading">Loading results...</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONSTANTS & INITIAL DATA ---
+        const LOCAL_SCORES_KEY = 'FEST_SCORES';
+        const LOCAL_RESULTS_KEY = 'FEST_RESULTS';
+        const LOCAL_ADMIN_KEY = 'FEST_ADMIN_MODE';
+        
+        // Admin Passcode
+        const ADMIN_PASSCODE = 'kunya'; 
+        
+        const WINGS = ['Ignara', 'Nexara', 'Lunara', 'Zonara']; 
+        
+        const LEADER_NAMES_BY_RANK = [
+            '', // Rank 1
+            '', // Rank 2
+            '', // Rank 3
+            '', // Rank 4
+        ];
+        
+        const POINT_SYSTEM = {
+            'Sub-Junior': { '1st': 5, '2nd': 3, '3rd': 1 },
+            'Junior': { '1st': 5, '2nd': 3, '3rd': 1 }, 
+            'Senior': { '1st': 5, '2nd': 3, '3rd': 1 }, 
+            'General': { '1st': 10, '2nd': 7, '3rd': 3 }
+        };
+        const PLACE_EMOJIS = { '1st': '🥇', '2nd': '🥈', '3rd': '🥉' };
+        const WING_COLORS = {
+            'Ignara': 'ignara-color', 'Nexara': 'nexara-color', 'Lunara': 'lunara-color', 'Zonara': 'zonara-color',
+            'Ignara-bg': 'ignara-bg', 'Nexara-bg': 'nexara-bg', 'Lunara-bg': 'lunara-bg', 'Zonara-bg': 'zonara-bg'
+        };
+
+        let festScores = {};
+        let festResults = [];
+        let isAdminMode = false; 
+        let pendingDeletionId = null; 
+        let currentPage = 'scoreboard';
+
+        // --- DOM ELEMENTS (Partial list for brevity) ---
+        const wingScoresDisplayEl = document.getElementById('wing-scores-display');
+        const adminControlsEl = document.getElementById('admin-controls'); 
+        const adminLoginModal = document.getElementById('admin-login-modal');
+        const adminForm = document.getElementById('admin-form');
+        const adminStatusEl = document.getElementById('admin-status');
+        const submitResultBtn = document.getElementById('submit-result-btn');
+        const adminLockStatusFormEl = document.getElementById('admin-lock-status-form');
+        const resultsPageEl = document.getElementById('results-page');
+        const resultForm = document.getElementById('result-form');
+        const entryCategorySelect = document.getElementById('entry-category');
+        const entryPositionSelect = document.getElementById('entry-position');
+        const pointsPreviewEl = document.getElementById('points-preview');
+        const resultsListEl = document.getElementById('results-list');
+        const filterWingEl = document.getElementById('filter-wing');
+        const filterCategoryEl = document.getElementById('filter-category');
+        const filterPositionEl = document.getElementById('filter-position');
+        const searchTextEl = document.getElementById('search-text');
+        const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+        const confirmMessageEl = document.getElementById('confirm-message');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+        
+        // --- DATA MANAGEMENT (Local Storage) ---
+        function loadData() {
+            try {
+                const storedScores = localStorage.getItem(LOCAL_SCORES_KEY);
+                const storedResults = localStorage.getItem(LOCAL_RESULTS_KEY);
+                const storedAdminMode = localStorage.getItem(LOCAL_ADMIN_KEY);
+
+                if (storedScores) {
+                    const parsedScores = JSON.parse(storedScores);
+                    festScores = WINGS.reduce((acc, wing) => ({ 
+                        ...acc, 
+                        [wing]: parsedScores[wing] || 0 
+                    }), {});
+                } else {
+                    festScores = WINGS.reduce((acc, wing) => ({ ...acc, [wing]: 0 }), {});
+                }
+
+                if (storedResults) {
+                    festResults = JSON.parse(storedResults)
+                        .filter(result => WINGS.includes(result.wing))
+                        .sort((a, b) => b.timestamp - a.timestamp);
+                } else {
+                    festResults = [];
+                }
+                
+                isAdminMode = storedAdminMode === 'true'; 
+
+            } catch (error) {
+                console.error("Error loading data from Local Storage:", error);
+                festScores = WINGS.reduce((acc, wing) => ({ ...acc, [wing]: 0 }), {});
+                festResults = [];
+                isAdminMode = false;
+            }
+            renderAll();
+        }
+
+        function saveData() {
+            try {
+                localStorage.setItem(LOCAL_SCORES_KEY, JSON.stringify(festScores));
+                localStorage.setItem(LOCAL_RESULTS_KEY, JSON.stringify(festResults));
+                localStorage.setItem(LOCAL_ADMIN_KEY, isAdminMode.toString());
+            } catch (error) {
+                console.error("Error saving data to Local Storage:", error);
+            }
+        }
+        
+        function calculatePoints(category, position) {
+            return POINT_SYSTEM[category]?.[position] || 0;
+        }
+
+        // --- RENDERING FUNCTIONS ---
+
+        function renderAdminControls() {
+            // 1. Update Admin Mode Status Display 
+            if (isAdminMode) {
+                adminControlsEl.innerHTML = `
+                    <div class="flex items-center justify-between p-3 bg-green-900 rounded-xl border border-green-700 shadow-lg">
+                        <span class="flex items-center text-sm font-bold text-green-400">
+                            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                            ADMIN MODE: UNLOCKED (Score Entry Enabled)
+                        </span>
+                        <button onclick="toggleAdminMode(false)" class="px-3 py-1 text-sm rounded-lg bg-red-600 hover:bg-red-700 transition text-white font-semibold">Lock</button>
+                    </div>
+                `;
+            } else {
+                 adminControlsEl.innerHTML = `
+                    <div class="flex items-center justify-between p-3 bg-red-900 rounded-xl border border-red-700 shadow-lg">
+                        <span class="flex items-center text-sm font-bold text-red-400">
+                            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2h2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2h2zm4.156-4.723a1 1 0 011.688 0L12.5 7h-5L9.156 4.277zM10 13a1 1 0 000 2h.01a1 1 0 100-2H10z" clip-rule="evenodd"></path></svg>
+                            ADMIN MODE: LOCKED (Score Entry Disabled)
+                        </span>
+                        <button onclick="showAdminLoginModal()" class="px-3 py-1 text-sm rounded-lg bg-red-600 hover:bg-red-700 transition text-white font-semibold">Unlock</button>
+                    </div>
+                `;
+            }
+            
+            // 2. Control submission form (Editing functionality for score entry)
+            const formInputs = resultForm.querySelectorAll('input, select');
+            if (!isAdminMode) {
+                formInputs.forEach(input => input.disabled = true);
+                submitResultBtn.classList.add('admin-locked');
+                submitResultBtn.textContent = 'Admin Lock Active (Cannot Submit)';
+                submitResultBtn.disabled = true;
+                adminLockStatusFormEl.textContent = 'Admin Mode is locked. Unlock to submit results.';
+                
+            } else {
+                formInputs.forEach(input => input.disabled = false);
+                submitResultBtn.classList.remove('admin-locked');
+                submitResultBtn.textContent = 'Add Result & Update Score';
+                submitResultBtn.disabled = false;
+                adminLockStatusFormEl.textContent = '';
+            }
+
+            // Re-render Detailed Results list to update the visibility of Delete buttons
+            if (currentPage === 'results') {
+                renderDetailedResults();
+            }
+        }
+
+
+        /**
+         * Renders the main wing score cards and the summary card.
+         */
+        function renderScoreboard() {
+            const rankedWings = WINGS.map(wing => ({
+                name: wing,
+                score: festScores[wing] || 0
+            })).sort((a, b) => b.score - a.score);
+
+            let cardsHtml = rankedWings.map((wingData, index) => {
+                const rank = index + 1;
+                
+                const rankIndicator = (rank === 1) 
+                    ? `<p class="text-lg text-gray-400 mt-1 mb-2">🏆</p>` 
+                    : `<p class="text-lg text-gray-400 mt-1 mb-2">&nbsp;</p>`; 
+
+                const leaderName = LEADER_NAMES_BY_RANK[index] || ''; 
+                const wingColorClass = WING_COLORS[wingData.name];
+                const wingBgClass = WING_COLORS[`${wingData.name}-bg`];
+                
+                return `
+                    <div class="score-card bg-card rounded-xl p-4 text-center shadow-lg border-t-4 border-violet-500 flex flex-col items-center">
+                        <p class="text-xs font-semibold uppercase tracking-widest ${wingColorClass} mb-1">${wingData.name}</p>
+                        <p class="text-4xl font-extrabold text-white">${wingData.score}</p>
+                        <!-- RANK INDICATOR -->
+                        ${rankIndicator}
+                        <p class="text-sm font-bold text-violet-300 mt-1 mb-3 truncate max-w-full" title="${leaderName}">${leaderName}</p>
+
+                        <!-- Winner Icon Buttons -->
+                        <div class="flex flex-wrap justify-center gap-1.5 mt-2">
+                            <button onclick="showWingWinners('${wingData.name}', '1st')" class="p-1.5 rounded-full ${wingBgClass} text-white shadow-md hover:scale-105 transition text-xs" title="1st Place Winners">🥇</button>
+                            <button onclick="showWingWinners('${wingData.name}', '2nd')" class="p-1.5 rounded-full ${wingBgClass} text-white shadow-md hover:scale-105 transition text-xs" title="2nd Place Winners">🥈</button>
+                            <button onclick="showWingWinners('${wingData.name}', '3rd')" class="p-1.5 rounded-full ${wingBgClass} text-white shadow-md hover:scale-105 transition text-xs" title="3rd Place Winners">🥉</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            const totalResults = festResults.length;
+
+            const summaryCardHtml = `
+                <!-- Summary card takes full width -->
+                <div class="score-card bg-card rounded-xl p-6 text-center shadow-2xl border-t-4 border-gray-500 flex flex-col justify-between col-span-2">
+                    <p class="text-xl font-extrabold uppercase tracking-widest text-gray-300 mb-4">Fest Summary Overview</p>
+                    
+                    <div class="flex justify-center items-center p-3 rounded-lg bg-gray-800">
+                        <!-- Stat: Total Results Recorded -->
+                        <div class="w-full">
+                            <p class="text-5xl font-extrabold text-white">${totalResults}</p>
+                            <p class="text-sm text-gray-400 mt-2">Results Recorded</p>
+                        </div>
+                    </div>
+                    
+                    <p class="text-xs text-violet-400 mt-4">Detailed entries are available in the 'Entry' tab.</p>
+                </div>
+            `;
+            
+            wingScoresDisplayEl.innerHTML = cardsHtml + summaryCardHtml;
+            renderAdminControls();
+        }
+
+        /**
+         * Renders the filterable list of detailed results (Page 2).
+         * Delete button is conditionally rendered here based on isAdminMode.
+         */
+        function renderDetailedResults() {
+            // Viewing the list is public.
+            const wingFilter = filterWingEl.value;
+            const categoryFilter = filterCategoryEl.value;
+            const positionFilter = filterPositionEl.value;
+            const searchText = searchTextEl.value.toLowerCase();
+            
+            const filteredResults = festResults.filter(result => {
+                const matchesWing = wingFilter === 'All' || result.wing === wingFilter;
+                const matchesCategory = categoryFilter === 'All' || result.category === categoryFilter;
+                const matchesPosition = positionFilter === 'All' || result.position === positionFilter;
+                
+                const matchesText = searchText === '' || 
+                                    result.name.toLowerCase().includes(searchText) ||
+                                    result.program.toLowerCase().includes(searchText); 
+                
+                return matchesWing && matchesCategory && matchesPosition && matchesText;
+            });
+
+            if (filteredResults.length === 0) {
+                resultsListEl.innerHTML = `<p class="text-center text-gray-500 py-10">No results found matching the filters or search term.</p>`;
+                return;
+            }
+
+            resultsListEl.innerHTML = filteredResults.map(result => {
+                const wingColorClass = WING_COLORS[result.wing];
+                const placeEmoji = PLACE_EMOJIS[result.position] || '🏅';
+
+                // Delete button is ONLY rendered if isAdminMode is true (Editing action)
+                const programNameEscaped = result.program.replace(/'/g, "\\'");
+                const deleteButton = isAdminMode ? `
+                    <button 
+                        onclick="requestDeleteResult('${result.id}', '${programNameEscaped}', '${result.wing}', ${result.points})" 
+                        class="p-1.5 ml-2 text-red-400 hover:text-red-600 transition rounded-full hover:bg-red-900" 
+                        title="Delete Result (Admin)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                    </button>
+                ` : ''; 
+
+                return `
+                    <div class="flex justify-between items-center p-3 rounded-lg bg-gray-800 hover:bg-gray-700 transition border-l-4 border-violet-500">
+                        <div class="flex-grow">
+                            <p class="font-semibold text-white text-sm truncate">${placeEmoji} ${result.program}</p>
+                            <p class="text-xs text-gray-400 truncate">${result.name} - <span class="${wingColorClass}">${result.wing}</span> (${result.category})</p>
+                        </div>
+                        <div class="text-right ml-2 flex-shrink-0 flex items-center">
+                            <p class="font-bold text-md text-green-400">${result.points} pts</p>
+                            ${deleteButton} 
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('results-loading').classList.add('hidden');
+        }
+
+        function renderAll() {
+            renderScoreboard();
+            renderDetailedResults();
+        }
+
+        // --- ADMIN LOGIN / LOCK LOGIC ---
+
+        function showAdminLoginModal() {
+            adminStatusEl.classList.add('hidden');
+            document.getElementById('admin-passcode').value = '';
+            adminLoginModal.classList.remove('hidden');
+            adminLoginModal.classList.add('flex');
+        }
+
+        function handleAdminLogin(e) {
+            e.preventDefault();
+            const inputPasscode = document.getElementById('admin-passcode').value;
+            
+            adminStatusEl.classList.remove('hidden');
+            if (inputPasscode === ADMIN_PASSCODE) {
+                toggleAdminMode(true);
+                adminStatusEl.textContent = "Login Successful. Admin Mode Unlocked!";
+                adminStatusEl.classList.add('bg-green-700');
+                adminStatusEl.classList.remove('bg-red-800');
+                
+                setTimeout(() => {
+                    adminLoginModal.classList.add('hidden');
+                }, 1000);
+
+            } else {
+                adminStatusEl.textContent = "Incorrect Passcode. Try again.";
+                adminStatusEl.classList.add('bg-red-800');
+                adminStatusEl.classList.remove('bg-green-700');
+            }
+        }
+        adminForm.addEventListener('submit', handleAdminLogin);
+        window.showAdminLoginModal = showAdminLoginModal; 
+
+        function toggleAdminMode(state) {
+            isAdminMode = state;
+            saveData();
+            // Important: Re-render all to update lock status and delete buttons
+            renderAll(); 
+            // If the user is on the Results page, re-render controls and list
+            if (currentPage === 'results') {
+                renderAdminControls();
+                renderDetailedResults(); 
+            }
+        }
+        window.toggleAdminMode = toggleAdminMode; 
+
+        // --- NAVIGATION LOGIC ---
+
+        function navigate(pageId) {
+            // Viewing pages is open to all. Editing controls are handled by renderAdminControls.
+
+            const pages = { scoreboard: 'scoreboard-page', results: 'results-page' };
+            currentPage = pageId; 
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('nav-active', 'bg-violet-600', 'text-white');
+                btn.classList.add('bg-gray-700', 'text-gray-300');
+            });
+            
+            Object.keys(pages).forEach(key => {
+                const pageEl = document.getElementById(pages[key]);
+                
+                if (key === pageId) {
+                    pageEl.classList.remove('hidden');
+                    document.getElementById(`nav-${key}`).classList.add('nav-active', 'bg-violet-600', 'text-white');
+                    document.getElementById(`nav-${key}`).classList.remove('bg-gray-700', 'text-gray-300');
+                } else {
+                    pageEl.classList.add('hidden');
+                }
+            });
+
+            // Re-render data for the newly visible page 
+            renderAdminControls();
+            if (pageId === 'results') {
+                renderDetailedResults();
+            } else {
+                renderScoreboard();
+            }
+        }
+        window.navigate = navigate; 
+
+        /**
+         * Handles the result submission form. (Admin Only)
+         */
+        function handleResultSubmit(e) {
+            e.preventDefault();
+
+            if (!isAdminMode) {
+                adminLockStatusFormEl.textContent = 'Submission locked. Please unlock Admin Mode first.';
+                adminLockStatusFormEl.classList.add('bg-red-900', 'p-2', 'rounded-lg');
+                return;
+            }
+            
+            const name = document.getElementById('entry-name').value.trim();
+            const program = document.getElementById('entry-program').value.trim(); 
+            const category = entryCategorySelect.value;
+            const wing = document.getElementById('entry-wing').value;
+            const position = entryPositionSelect.value;
+            const points = calculatePoints(category, position);
+
+            if (points === 0 || !name || !program || !category || !wing || !position) {
+                const formStatusEl = document.getElementById('form-status');
+                formStatusEl.classList.remove('hidden', 'bg-green-700');
+                formStatusEl.classList.add('bg-red-700', 'text-white');
+                formStatusEl.textContent = "Error: Please fill all fields correctly.";
+                return;
+            }
+
+            // 1. Update Scores
+            festScores[wing] = (festScores[wing] || 0) + points;
+
+            // 2. Add Result to History
+            const newResult = {
+                id: Date.now().toString() + Math.random().toString(36).substring(2, 9), 
+                name,
+                program, 
+                category,
+                wing,
+                position,
+                points,
+                timestamp: Date.now() 
+            };
+            festResults.unshift(newResult); 
+
+            // 3. Save & Re-render
+            saveData();
+            renderAll();
+            
+            // 4. Status Update and Reset
+            const formStatusEl = document.getElementById('form-status');
+            formStatusEl.classList.remove('hidden', 'bg-red-700', 'bg-orange-700');
+            formStatusEl.classList.add('bg-green-700', 'text-white');
+            formStatusEl.textContent = `Success! ${points} points added to ${wing}.`;
+
+            // Reset form fields
+            e.target.reset(); 
+            pointsPreviewEl.textContent = ''; // Clear points preview
+
+            setTimeout(() => {
+                formStatusEl.classList.add('hidden');
+            }, 3000);
+        }
+        resultForm.addEventListener('submit', handleResultSubmit);
+
+        /**
+         * Live preview of points calculated for the selected category and position.
+         */
+        function updatePointsPreview() {
+            const category = entryCategorySelect.value;
+            const position = entryPositionSelect.value;
+            const points = calculatePoints(category, position);
+            
+            if (category && position) {
+                pointsPreviewEl.textContent = `This result is worth ${points} points.`;
+                pointsPreviewEl.classList.remove('text-red-400');
+                pointsPreviewEl.classList.add('text-green-400');
+            } else {
+                pointsPreviewEl.textContent = `Select both Category and Position to see point value.`;
+                pointsPreviewEl.classList.remove('text-green-400');
+                pointsPreviewEl.classList.add('text-red-400');
+            }
+        }
+        entryCategorySelect.addEventListener('change', updatePointsPreview);
+        entryPositionSelect.addEventListener('change', updatePointsPreview);
+        window.updatePointsPreview = updatePointsPreview; // Expose globally for form initialization
+
+        // --- DELETION LOGIC (Admin Only) ---
+        
+        function showCustomConfirm(message) {
+            confirmMessageEl.textContent = message;
+            deleteConfirmModal.classList.remove('hidden');
+            deleteConfirmModal.classList.add('flex');
+            return new Promise((resolve) => {
+                confirmDeleteBtn.onclick = () => {
+                    resolve(true);
+                    deleteConfirmModal.classList.add('hidden');
+                };
+            });
+        }
+
+        function hideCustomConfirm(status) {
+            deleteConfirmModal.classList.add('hidden');
+            // If hiding via cancel, clear pending ID
+            if (!status) {
+                pendingDeletionId = null;
+            }
+        }
+        window.hideCustomConfirm = hideCustomConfirm;
+
+        async function requestDeleteResult(id, program, wing, points) {
+            if (!isAdminMode) return; // Should be impossible if button is hidden, but safe check
+            
+            pendingDeletionId = id;
+
+            const confirmationMessage = `Are you sure you want to delete the result for "${program}" (${wing}, ${points} pts)? This action is irreversible and will reduce the wing's total score.`;
+            
+            const confirmed = await showCustomConfirm(confirmationMessage);
+            
+            if (confirmed && pendingDeletionId) {
+                performDeleteResult(pendingDeletionId, wing, points);
+            }
+            pendingDeletionId = null;
+        }
+        window.requestDeleteResult = requestDeleteResult;
+
+        function performDeleteResult(idToDelete, wing, points) {
+            // 1. Recalculate Scores
+            festScores[wing] = Math.max(0, (festScores[wing] || 0) - points);
+            
+            // 2. Remove Result from History
+            festResults = festResults.filter(result => result.id !== idToDelete);
+
+            // 3. Save & Re-render
+            saveData();
+            renderAll();
+        }
+
+
+        // --- WINNER MODAL LOGIC ---
+
+        function showWingWinners(wingName, position) {
+            const winners = festResults.filter(r => r.wing === wingName && r.position === position);
+            const modalTitleEl = document.getElementById('modal-title');
+            const modalContentEl = document.getElementById('modal-content');
+            const placeEmoji = PLACE_EMOJIS[position] || '🏅';
+
+            modalTitleEl.textContent = `${placeEmoji} ${wingName} Wing - ${position} Place Winners`;
+
+            if (winners.length === 0) {
+                modalContentEl.innerHTML = `<p class="text-center text-gray-400 py-6">No ${position} place winners recorded for the ${wingName} wing yet.</p>`;
+            } else {
+                modalContentEl.innerHTML = `
+                    <p class="text-sm font-semibold text-gray-300 mb-3">${winners.length} results recorded:</p>
+                    ${winners.map(winner => `
+                        <div class="p-3 bg-gray-700 rounded-lg border-l-4 border-violet-500">
+                            <p class="font-bold text-white">${winner.program}</p>
+                            <p class="text-sm text-gray-300">${winner.name} (${winner.category})</p>
+                        </div>
+                    `).join('')}
+                `;
+            }
+
+            document.getElementById('winners-modal').classList.remove('hidden');
+            document.getElementById('winners-modal').classList.add('flex');
+        }
+        window.showWingWinners = showWingWinners;
+
+        // --- FILTERING LOGIC ---
+
+        filterWingEl.addEventListener('change', renderDetailedResults);
+        filterCategoryEl.addEventListener('change', renderDetailedResults);
+        filterPositionEl.addEventListener('change', renderDetailedResults);
+        searchTextEl.addEventListener('input', renderDetailedResults);
+
+        // --- INITIALIZATION ---
+        window.onload = loadData;
+
+    </script>
+</body>
+</html>
